@@ -14,3 +14,9 @@ email: pryorelliott@gmail.com
 
 I am a 4th year undergraduate student at Montana State University.
 I am interested in machine learning and its applications.
+
+## Citations
+T1D_VPP is from Dr. Peter Jacobs' implementation [found here](https://github.com/petejacobs/T1D_VPP).
+It is from a Paper by Resalat et al "A statistical virtual patient population for the glucoregulatory system in type 1 
+diabetes with integrated exercise model".
+This is used in my work to model blood glucose dynamics with given insulin regimines.
