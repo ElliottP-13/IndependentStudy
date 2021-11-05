@@ -1,4 +1,4 @@
-function [outputArg1,outputArg2] = run_simulation(times, carbs)
+function [outputArg1,outputArg2] = run_simulation(times, carbs, ICR, basal)
 %run_simulation
 %Copied from Single Hormone Population/Test Population/Test_Population.m
 %% loading the VPP
@@ -11,7 +11,7 @@ function [outputArg1,outputArg2] = run_simulation(times, carbs)
     carbs = carbs';
 
     Ts = 5;                          % Ts: sampling interval every 5 minutes (min);
-    Days_Sim = 4;                    % Number of simulation Days
+    Days_Sim = 1;                    % Number of simulation Days
     Sim_time = Days_Sim*1440/Ts;     % simulation time (sample)
     nn = 1;                          % ID of the virtual subject
 
@@ -43,7 +43,6 @@ function [outputArg1,outputArg2] = run_simulation(times, carbs)
     meal_time= []; meal_Amount = [];
 
     %% Bolus calculations
-    ICR = (1700/TDIRlist(1,nn)/3);       % ICR: Insulin to Carb Ratio
     Ip = 1;                                         % percentage of pre-meal bolus  [unitless: 0-1]
     Bolus = Ip*(Meal_Vector/ICR)*1000/(Weight*Ts);    % pre-meal bolus insulin with correct units for model        [mU/kg/min]
     %% Initial Condition; the steady state run for the initial conditions
@@ -80,7 +79,7 @@ function [outputArg1,outputArg2] = run_simulation(times, carbs)
     %%
 
     % Provide patient with constant basal insulin
-    u_Basal = (TDIRlist(1,nn)/TDIR_Basal_Rate/24)*1000/Weight/60; % basal insulin (mU/kg/min)
+    u_Basal = basal*1000/Weight/60; % basal insulin (mU/kg/min)
 
     for kk = 0:Sim_time
         if kk == 0
