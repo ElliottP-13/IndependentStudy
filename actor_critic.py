@@ -1,5 +1,7 @@
-import gym, os
-from itertools import count
+import collections
+import os
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,14 +14,10 @@ import compute_reward
 # From here: https://github.com/yc930401/Actor-Critic-pytorch/blob/master/Actor-Critic.py
 # Another good implementation that uses a nn with a shared first layer:
 # https://github.com/pytorch/examples/blob/master/reinforcement_learning/actor_critic.py
-import compute_reward
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-env = gym.make("CartPole-v0").unwrapped
 
-state_size = env.observation_space.shape[0]
-action_size = env.action_space.n
-lr = 0.0001
+
 
 eng = matlab.engine.start_matlab()
 eng.cd(r'T1D_VPP/', nargout=0)
@@ -28,6 +26,13 @@ eng.cd(r'T1D_VPP/', nargout=0)
 basal_arr = np.arange(0.01, 3.01, 0.01)  # [0.01, 3] increments of 0.01
 carb_arr = np.arange(5, 21, 1)  # [5, 20] increments of 1
 num_actions = len(basal_arr) * len(carb_arr)
+
+state_size = 291
+action_size = num_actions
+lr = 0.0001
+
+gbest_reward = float('-inf')
+gbest_action = -1
 
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
@@ -62,7 +67,7 @@ class Critic(nn.Module):
         return value
 
 
-def compute_returns(next_value, rewards,gamma=0.99):
+def compute_returns(next_value, rewards, gamma=0.99):
     R = next_value
     returns = []
     for step in reversed(range(len(rewards))):
@@ -84,48 +89,60 @@ def environment(action=3069):
     m_times = matlab.double(times)
     m_carbs = matlab.double(carbs)
 
-    bg, insulin = eng.run_sim(m_times, m_carbs, carb, basal, nargout=2)
+    bg, insulin = eng.run_sim(m_times, m_carbs, float(carb), float(basal), nargout=2)
     bg, insulin = bg[0], insulin[0]
     reward = compute_reward.reward(bg)
 
     state = [basal, carb]
     state.extend(bg)
 
+    print(f"Current State: {basal}, {carb} --> {reward}")
+    print(len(state))
+    print(num_actions)
     return np.array(state), reward
 
 
 def trainIters(actor, critic, n_iters):
     optimizerA = optim.Adam(actor.parameters())
     optimizerC = optim.Adam(critic.parameters())
+    state, _ = environment()
+
+    global gbest_reward, gbest_action
+
     for iter in range(n_iters):
-        state, _ = environment()
         log_probs = []
         values = []
         rewards = []
         masks = []
         entropy = 0
-        env.reset()
 
-        for i in count():
-            state = torch.FloatTensor(state).to(device)
-            probs, value = actor(state), critic(state)
+        state = torch.FloatTensor(state).to(device)
+        probs, value = actor(state), critic(state)
 
-            action = probs.sample()
-            next_state, reward = environment(action)
+        show_distrib(probs, iter)
 
-            log_prob = probs.log_prob(action).unsqueeze(0)
-            entropy += probs.entropy().mean()
+        action = probs.sample()
+        next_state, reward = environment(action)
 
-            log_probs.append(log_prob)
-            values.append(value)
-            rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
+        if reward >= gbest_reward:
+            f = open('log.txt', 'a')
+            f.write(f"Best action: {action}: ({basal_arr[action % len(basal_arr)]}, {carb_arr[action // len(basal_arr)]}) = {reward}")
+            f.close()
+            gbest_reward = reward
+            gbest_action = action
 
-            state = next_state
+        log_prob = probs.log_prob(action).unsqueeze(0)
+        entropy += probs.entropy().mean()
 
+        log_probs.append(log_prob)
+        values.append(value)
+        rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
+
+        state = next_state
 
         next_state = torch.FloatTensor(next_state).to(device)
         next_value = critic(next_state)
-        returns = compute_returns(next_value, rewards, masks)
+        returns = compute_returns(next_value, rewards)
 
         log_probs = torch.cat(log_probs)
         returns = torch.cat(returns).detach()
@@ -144,11 +161,32 @@ def trainIters(actor, critic, n_iters):
         optimizerC.step()
     torch.save(actor, 'model/actor.pkl')
     torch.save(critic, 'model/critic.pkl')
-    env.close()
+
+
+def show_distrib(distrib, iter):
+    print('showing distrib', end=', ')
+    x = [i for i in range(num_actions)]
+    n = 10000
+    samp = [distrib.sample().item() for _ in range(n)]
+    print('finished sampling', end=', ')
+    counter = collections.Counter(samp)
+    print('made counter', end=', ')
+    y = [counter[i] for i in range(num_actions)]
+    print('displaying')
+
+    bin_size = 20
+    bin_x = [i for i in range(0, num_actions, bin_size)]
+    bin_y = [sum(y[bin_x[i]:bin_x[i+1]]) for i in range(len(bin_x) - 1)]
+
+    plt.scatter(x, y)
+    plt.title(f"Iteration: {iter}")
+    plt.show()
+
 
 
 if __name__ == '__main__':
     print(device)
+    print(action_size == num_actions)
     if os.path.exists('model/actor.pkl'):
         actor = torch.load('model/actor.pkl')
         print('Actor Model loaded')
