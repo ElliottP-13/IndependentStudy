@@ -17,14 +17,12 @@ import compute_reward
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-
 eng = matlab.engine.start_matlab()
 eng.cd(r'T1D_VPP/', nargout=0)
 
 # Discritize the action space
-basal_arr = np.arange(0.01, 3.01, 0.01)  # [0.01, 3] increments of 0.01
-carb_arr = np.arange(5, 21, 1)  # [5, 20] increments of 1
+basal_arr = np.arange(0.01, 3.01, 0.5)  # [0.01, 3] increments of 0.01
+carb_arr = np.arange(5, 21, 5)  # [5, 20] increments of 1
 num_actions = len(basal_arr) * len(carb_arr)
 
 state_size = 291
@@ -34,20 +32,19 @@ lr = 0.0001
 gbest_reward = float('-inf')
 gbest_action = -1
 
+
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
         super(Actor, self).__init__()
         self.state_size = state_size
         self.action_size = action_size
-        self.linear1 = nn.Linear(self.state_size, 128)
-        self.linear2 = nn.Linear(128, 256)
-        self.linear3 = nn.Linear(256, self.action_size)
+        self.linear1 = nn.Linear(self.state_size, self.action_size)
 
     def forward(self, state):
-        output = F.relu(self.linear1(state))
-        output = F.relu(self.linear2(output))
-        output = self.linear3(output)
-        distribution = Categorical(F.softmax(output, dim=-1))
+        output = self.linear1(state)
+        probs = F.softmax(output, dim=-1)
+        print(f'probs: {probs.cpu().detach().numpy()}')
+        distribution = Categorical(probs)
         return distribution
 
 
@@ -56,15 +53,11 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.state_size = state_size
         self.action_size = action_size
-        self.linear1 = nn.Linear(self.state_size, 128)
-        self.linear2 = nn.Linear(128, 256)
-        self.linear3 = nn.Linear(256, 1)
+        self.linear1 = nn.Linear(self.state_size, 1)
 
     def forward(self, state):
-        output = F.relu(self.linear1(state))
-        output = F.relu(self.linear2(output))
-        value = self.linear3(output)
-        return value
+        output = self.linear1(state)
+        return output
 
 
 def compute_returns(next_value, rewards, gamma=0.99):
@@ -76,7 +69,7 @@ def compute_returns(next_value, rewards, gamma=0.99):
     return returns
 
 
-def environment(action=3069):
+def environment(action=5):
     # default action is basal = 0.7, carb = 15
     if action > num_actions or action < 0:
         raise Exception(f"Action must be between: [0, {num_actions}]: {action}")
@@ -97,8 +90,6 @@ def environment(action=3069):
     state.extend(bg)
 
     print(f"Current State: {basal}, {carb} --> {reward}")
-    print(len(state))
-    print(num_actions)
     return np.array(state), reward
 
 
@@ -116,29 +107,31 @@ def trainIters(actor, critic, n_iters):
         masks = []
         entropy = 0
 
-        state = torch.FloatTensor(state).to(device)
-        probs, value = actor(state), critic(state)
+        for i in range(3):
+            state = torch.FloatTensor(state).to(device)
+            probs, value = actor(state), critic(state)
 
-        show_distrib(probs, iter)
+            show_distrib(probs, iter)
+            print(f'Predicted reward: {value.item()}')
 
-        action = probs.sample()
-        next_state, reward = environment(action)
+            action = probs.sample()
+            next_state, reward = environment(action)
 
-        if reward >= gbest_reward:
-            f = open('log.txt', 'a')
-            f.write(f"Best action: {action}: ({basal_arr[action % len(basal_arr)]}, {carb_arr[action // len(basal_arr)]}) = {reward}")
-            f.close()
-            gbest_reward = reward
-            gbest_action = action
+            if reward >= gbest_reward:
+                f = open('log.txt', 'a')
+                f.write(f"Best action: {action}: ({basal_arr[action % len(basal_arr)]}, {carb_arr[action // len(basal_arr)]}) = {reward}\n")
+                f.close()
+                gbest_reward = reward
+                gbest_action = action
 
-        log_prob = probs.log_prob(action).unsqueeze(0)
-        entropy += probs.entropy().mean()
+            log_prob = probs.log_prob(action).unsqueeze(0)
+            entropy += probs.entropy().mean()
 
-        log_probs.append(log_prob)
-        values.append(value)
-        rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
+            log_probs.append(log_prob)
+            values.append(value)
+            rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
 
-        state = next_state
+            state = next_state
 
         next_state = torch.FloatTensor(next_state).to(device)
         next_value = critic(next_state)
@@ -152,6 +145,7 @@ def trainIters(actor, critic, n_iters):
 
         actor_loss = -(log_probs * advantage.detach()).mean()
         critic_loss = advantage.pow(2).mean()
+
 
         optimizerA.zero_grad()
         optimizerC.zero_grad()
@@ -178,7 +172,7 @@ def show_distrib(distrib, iter):
     bin_x = [i for i in range(0, num_actions, bin_size)]
     bin_y = [sum(y[bin_x[i]:bin_x[i+1]]) for i in range(len(bin_x) - 1)]
 
-    plt.scatter(x, y)
+    plt.plot(x, y)
     plt.title(f"Iteration: {iter}")
     plt.show()
 
@@ -187,14 +181,7 @@ def show_distrib(distrib, iter):
 if __name__ == '__main__':
     print(device)
     print(action_size == num_actions)
-    if os.path.exists('model/actor.pkl'):
-        actor = torch.load('model/actor.pkl')
-        print('Actor Model loaded')
-    else:
-        actor = Actor(state_size, action_size).to(device)
-    if os.path.exists('model/critic.pkl'):
-        critic = torch.load('model/critic.pkl')
-        print('Critic Model loaded')
-    else:
-        critic = Critic(state_size, action_size).to(device)
+
+    actor = Actor(state_size, action_size).to(device)
+    critic = Critic(state_size, action_size).to(device)
     trainIters(actor, critic, n_iters=100)
