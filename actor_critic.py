@@ -138,7 +138,7 @@ def trainIters(actor, critic, n_iters):
 
             if reward >= gbest_reward:
                 f = open('log.txt', 'a')
-                f.write(f"Best action: {action}: ({basal_arr[action % len(basal_arr)]}, {carb_arr[action // len(basal_arr)]}) = {reward}\n")
+                f.write(f"Best action: {action}: ({basal}, {carb}) = {reward}\n")
                 f.close()
                 gbest_reward = reward
                 gbest_action = action
