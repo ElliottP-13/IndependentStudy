@@ -21,9 +21,12 @@ eng = matlab.engine.start_matlab()
 eng.cd(r'T1D_VPP/', nargout=0)
 
 # Discritize the action space
-basal_arr = np.arange(0.01, 3.01, 0.5)  # [0.01, 3] increments of 0.01
-carb_arr = np.arange(5, 21, 5)  # [5, 20] increments of 1
-num_actions = len(basal_arr) * len(carb_arr)
+num_actions = 9
+inc_basal = 0.1
+inc_carb = 5
+
+carb = 20
+basal = 0.5
 
 state_size = 291
 action_size = num_actions
@@ -69,12 +72,28 @@ def compute_returns(next_value, rewards, gamma=0.99):
     return returns
 
 
-def environment(action=5):
+def environment(action=8):
     # default action is basal = 0.7, carb = 15
     if action > num_actions or action < 0:
         raise Exception(f"Action must be between: [0, {num_actions}]: {action}")
-    basal = basal_arr[action % len(basal_arr)]
-    carb = carb_arr[action // len(basal_arr)]
+
+    global basal,carb
+
+    f_basal= action % num_actions
+    f_carb = action // num_actions
+
+    if f_basal == 0:
+        basal -= inc_basal
+    elif f_basal == 2:
+        basal += inc_basal
+
+    if f_carb == 0:
+        carb -= inc_carb
+    elif f_carb == 2:
+        carb += inc_carb
+
+    # basal = basal_arr[action % len(basal_arr)]
+    # carb = carb_arr[action // len(basal_arr)]
 
     times = [102, 144, 216, 240]
     carbs = [27, 17, 28, 12]
