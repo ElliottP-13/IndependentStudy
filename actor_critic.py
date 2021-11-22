@@ -21,15 +21,6 @@ eng = matlab.engine.start_matlab()
 eng.cd(r'T1D_VPP/', nargout=0)
 
 # Discritize the action space
-num_actions = 9
-inc_basal = 0.1
-inc_carb = 5
-
-carb = 20
-basal = 0.5
-
-state_size = 291
-action_size = num_actions
 lr = 0.0001
 
 gbest_reward = float('-inf')
@@ -63,6 +54,74 @@ class Critic(nn.Module):
         return output
 
 
+class environment:
+    def __init__(self, basal, carb, basal_inc, carb_inc):
+        self.basal = basal
+        self.carb = carb
+        self.basal_inc = basal_inc
+        self.carb_inc = carb_inc
+
+    def get_state(self, action=8):
+        # default action is basal = 0.7, carb = 15
+        if action > self.get_action_size() or action < 0:
+            raise Exception(f"Action must be between: [0, {self.get_action_size()}): {action}")
+
+        basal, carb = self.update_insulin(action)
+        self.basal, self.carb = basal, carb  # update globals
+
+        # basal = basal_arr[action % len(basal_arr)]
+        # carb = carb_arr[action // len(basal_arr)]
+
+        times = [102, 144, 216, 240]
+        carbs = [27, 17, 28, 12]
+
+        m_times = matlab.double(times)
+        m_carbs = matlab.double(carbs)
+
+        bg, insulin = eng.run_sim(m_times, m_carbs, float(carb), float(basal), nargout=2)
+        bg, insulin = bg[0], insulin[0]
+        reward = compute_reward.reward(bg)
+
+        state = [basal, carb]
+        state.extend(bg)
+
+        print(f"Current State: {basal}, {carb} --> {reward}")
+        return np.array(state), reward
+
+    def update_insulin(self, action):
+        carb, basal = self.carb, self.basal
+        inc_carb, inc_basal = self.carb_inc, self.basal_inc
+
+        f_basal = action % 3
+        f_carb = action // 3
+
+        if f_basal == 0:
+            basal -= inc_basal
+        elif f_basal == 2:
+            basal += inc_basal
+
+        if f_carb == 0:
+            carb -= inc_carb
+        elif f_carb == 2:
+            carb += inc_carb
+
+        # bounds checking
+        if carb <= 0:
+            carb = inc_carb
+        if basal <= 0:
+            basal = inc_basal
+
+        return basal, carb
+
+    @staticmethod
+    def get_state_size():
+        return 291
+
+    @staticmethod
+    def get_action_size():
+        return 9
+
+
 def compute_returns(next_value, rewards, gamma=0.99):
     R = next_value
     returns = []
@@ -72,50 +131,11 @@ def compute_returns(next_value, rewards, gamma=0.99):
     return returns
 
 
-def environment(action=8):
-    # default action is basal = 0.7, carb = 15
-    if action > num_actions or action < 0:
-        raise Exception(f"Action must be between: [0, {num_actions}]: {action}")
-
-    global basal,carb
-
-    f_basal= action % num_actions
-    f_carb = action // num_actions
-
-    if f_basal == 0:
-        basal -= inc_basal
-    elif f_basal == 2:
-        basal += inc_basal
-
-    if f_carb == 0:
-        carb -= inc_carb
-    elif f_carb == 2:
-        carb += inc_carb
-
-    # basal = basal_arr[action % len(basal_arr)]
-    # carb = carb_arr[action // len(basal_arr)]
-
-    times = [102, 144, 216, 240]
-    carbs = [27, 17, 28, 12]
-
-    m_times = matlab.double(times)
-    m_carbs = matlab.double(carbs)
-
-    bg, insulin = eng.run_sim(m_times, m_carbs, float(carb), float(basal), nargout=2)
-    bg, insulin = bg[0], insulin[0]
-    reward = compute_reward.reward(bg)
-
-    state = [basal, carb]
-    state.extend(bg)
-
-    print(f"Current State: {basal}, {carb} --> {reward}")
-    return np.array(state), reward
-
-
 def trainIters(actor, critic, n_iters):
     optimizerA = optim.Adam(actor.parameters())
     optimizerC = optim.Adam(critic.parameters())
-    state, _ = environment()
+    env = environment(0.7, 20, 0.3, 5)
+    state, _ = env.get_state()
 
     global gbest_reward, gbest_action
 
@@ -134,11 +154,11 @@ def trainIters(actor, critic, n_iters):
             print(f'Predicted reward: {value.item()}')
 
             action = probs.sample()
-            next_state, reward = environment(action)
+            next_state, reward = env.get_state(action)
 
             if reward >= gbest_reward:
                 f = open('log.txt', 'a')
-                f.write(f"Best action: {action}: ({basal}, {carb}) = {reward}\n")
+                f.write(f"Best action: {action}: ({env.basal}, {env.carb}) = {reward}\n")
                 f.close()
                 gbest_reward = reward
                 gbest_action = action
@@ -178,17 +198,17 @@ def trainIters(actor, critic, n_iters):
 
 def show_distrib(distrib, iter):
     print('showing distrib', end=', ')
-    x = [i for i in range(num_actions)]
+    x = [i for i in range(environment.get_action_size())]
     n = 10000
     samp = [distrib.sample().item() for _ in range(n)]
     print('finished sampling', end=', ')
     counter = collections.Counter(samp)
     print('made counter', end=', ')
-    y = [counter[i] for i in range(num_actions)]
+    y = [counter[i] for i in range(environment.get_action_size())]
     print('displaying')
 
     bin_size = 20
-    bin_x = [i for i in range(0, num_actions, bin_size)]
+    bin_x = [i for i in range(0, environment.get_action_size(), bin_size)]
     bin_y = [sum(y[bin_x[i]:bin_x[i+1]]) for i in range(len(bin_x) - 1)]
 
     plt.plot(x, y)
@@ -199,8 +219,7 @@ def show_distrib(distrib, iter):
 
 if __name__ == '__main__':
     print(device)
-    print(action_size == num_actions)
 
-    actor = Actor(state_size, action_size).to(device)
-    critic = Critic(state_size, action_size).to(device)
+    actor = Actor(environment.get_state_size(), environment.get_action_size()).to(device)
+    critic = Critic(environment.get_state_size(), environment.get_action_size()).to(device)
     trainIters(actor, critic, n_iters=100)
