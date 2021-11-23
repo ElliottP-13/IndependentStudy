@@ -87,11 +87,13 @@ class environment:
         norm_bg = bg / 150
         norm_carb = carb / 15
 
+        rep = [np.min(norm_bg), np.median(norm_bg), np.max(norm_bg)]
+
         critic_state = np.array([deltas[0], deltas[1]])  # delta basal, delta carb
-        critic_state = np.append(critic_state, norm_bg)
+        critic_state = np.append(critic_state, rep)
 
         actor_state = np.array([basal, norm_carb])
-        actor_state = np.append(actor_state, norm_bg)
+        actor_state = np.append(actor_state, rep)
 
         print(f"Current State: {basal}, {carb} --> {reward}")
         return np.array(actor_state), np.array(critic_state), reward
@@ -130,14 +132,14 @@ class environment:
 
     @staticmethod
     def get_state_size():
-        return 291
+        return 5
 
     @staticmethod
     def get_action_size():
         return 9
 
 
-def compute_returns(next_value, rewards, gamma=0.99):
+def compute_returns(next_value, rewards, gamma=0.8):
     R = next_value
     returns = []
     for step in reversed(range(len(rewards))):
@@ -152,7 +154,7 @@ def trainIters(actor, critic, n_iters):
     env = environment(0.7, 20, 0.3, 5)
     actor_state, critic_state, _ = env.get_state()
 
-    learn_len = 7
+    learn_len = 3
 
     global gbest_reward, gbest_action
 
@@ -210,7 +212,6 @@ def trainIters(actor, critic, n_iters):
         actor_loss = -(log_probs * advantage.detach()).mean()
         critic_loss = advantage.pow(2).mean()
 
-
         optimizerA.zero_grad()
         optimizerC.zero_grad()
         actor_loss.backward()
@@ -231,10 +232,6 @@ def show_distrib(distrib, iter):
     print('made counter', end=', ')
     y = [counter[i] for i in range(environment.get_action_size())]
     print('displaying')
-
-    bin_size = 20
-    bin_x = [i for i in range(0, environment.get_action_size(), bin_size)]
-    bin_y = [sum(y[bin_x[i]:bin_x[i+1]]) for i in range(len(bin_x) - 1)]
 
     plt.plot(x, y)
     plt.title(f"Iteration: {iter}")
