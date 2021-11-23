@@ -66,7 +66,7 @@ class environment:
         if action > self.get_action_size() or action < 0:
             raise Exception(f"Action must be between: [0, {self.get_action_size()}): {action}")
 
-        basal, carb = self.update_insulin(action)
+        basal, carb, deltas = self.update_insulin(action)
         self.basal, self.carb = basal, carb  # update globals
 
         # basal = basal_arr[action % len(basal_arr)]
@@ -82,11 +82,19 @@ class environment:
         bg, insulin = bg[0], insulin[0]
         reward = compute_reward.reward(bg)
 
-        state = [basal, carb]
-        state.extend(bg)
+        bg = np.array(bg)
+
+        norm_bg = bg / 150
+        norm_carb = carb / 15
+
+        critic_state = np.array([deltas[0], deltas[1]])  # delta basal, delta carb
+        critic_state = np.append(critic_state, norm_bg)
+
+        actor_state = np.array([basal, norm_carb])
+        actor_state = np.append(actor_state, norm_bg)
 
         print(f"Current State: {basal}, {carb} --> {reward}")
-        return np.array(state), reward
+        return np.array(actor_state), np.array(critic_state), reward
 
     def update_insulin(self, action):
         carb, basal = self.carb, self.basal
@@ -95,15 +103,22 @@ class environment:
         f_basal = action % 3
         f_carb = action // 3
 
+        db = 0
+        dc = 0
+
         if f_basal == 0:
             basal -= inc_basal
+            db = -inc_basal
         elif f_basal == 2:
             basal += inc_basal
+            db = inc_basal
 
         if f_carb == 0:
             carb -= inc_carb
+            dc = -inc_carb
         elif f_carb == 2:
             carb += inc_carb
+            dc = inc_carb
 
         # bounds checking
         if carb <= 0:
@@ -111,7 +126,7 @@ class environment:
         if basal <= 0:
             basal = inc_basal
 
-        return basal, carb
+        return basal, carb, (db, dc)
 
     @staticmethod
     def get_state_size():
@@ -135,9 +150,14 @@ def trainIters(actor, critic, n_iters):
     optimizerA = optim.Adam(actor.parameters())
     optimizerC = optim.Adam(critic.parameters())
     env = environment(0.7, 20, 0.3, 5)
-    state, _ = env.get_state()
+    actor_state, critic_state, _ = env.get_state()
+
+    learn_len = 7
 
     global gbest_reward, gbest_action
+
+    with open('log.txt', 'a') as f:
+        f.write("New experiment: \n")
 
     for iter in range(n_iters):
         log_probs = []
@@ -146,19 +166,21 @@ def trainIters(actor, critic, n_iters):
         masks = []
         entropy = 0
 
-        for i in range(3):
-            state = torch.FloatTensor(state).to(device)
-            probs, value = actor(state), critic(state)
+        for i in range(learn_len):
+            actor_state = torch.FloatTensor(actor_state).to(device)
+            critic_state = torch.FloatTensor(critic_state).to(device)
+            probs, value = actor(actor_state), critic(critic_state)
 
             show_distrib(probs, iter)
             print(f'Predicted reward: {value.item()}')
 
             action = probs.sample()
-            next_state, reward = env.get_state(action)
+            print(f"Action: {action}")
+            next_actor_state, next_critic_state, reward = env.get_state(action)
 
             if reward >= gbest_reward:
                 f = open('log.txt', 'a')
-                f.write(f"Best action: {action}: ({env.basal}, {env.carb}) = {reward}\n")
+                f.write(f"Best action: {action}: ({env.basal}, {env.carb}) = {reward}, iteration {iter * learn_len + i}\n")
                 f.close()
                 gbest_reward = reward
                 gbest_action = action
@@ -170,10 +192,13 @@ def trainIters(actor, critic, n_iters):
             values.append(value)
             rewards.append(torch.tensor([reward], dtype=torch.float, device=device))
 
-            state = next_state
+            actor_state = next_actor_state
+            critic_state = next_critic_state
 
-        next_state = torch.FloatTensor(next_state).to(device)
-        next_value = critic(next_state)
+        next_actor_state = torch.FloatTensor(next_actor_state).to(device)
+        next_critic_state = torch.FloatTensor(next_critic_state).to(device)
+
+        next_value = critic(next_critic_state)
         returns = compute_returns(next_value, rewards)
 
         log_probs = torch.cat(log_probs)
@@ -214,7 +239,6 @@ def show_distrib(distrib, iter):
     plt.plot(x, y)
     plt.title(f"Iteration: {iter}")
     plt.show()
-
 
 
 if __name__ == '__main__':
