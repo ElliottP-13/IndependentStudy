@@ -32,10 +32,15 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.state_size = state_size
         self.action_size = action_size
-        self.linear1 = nn.Linear(self.state_size, self.action_size)
+        self.linear1 = nn.Linear(self.state_size, 500)
+        self.linear2 = nn.Linear(500, 500)
+        self.linear3 = nn.Linear(500, self.action_size)
 
     def forward(self, state):
-        output = self.linear1(state)
+        output = F.relu(self.linear1(state))
+        output = F.relu(self.linear2(output))
+        output = self.linear3(output)
+
         probs = F.softmax(output, dim=-1)
         print(f'probs: {probs.cpu().detach().numpy()}')
         distribution = Categorical(probs)
