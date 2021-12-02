@@ -1,6 +1,4 @@
 import collections
-import os
-
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -8,8 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
 import matlab.engine
-import numpy as np
-import compute_reward
+from environment import Environment
 
 # From here: https://github.com/yc930401/Actor-Critic-pytorch/blob/master/Actor-Critic.py
 # Another good implementation that uses a nn with a shared first layer:
@@ -58,90 +55,6 @@ class Critic(nn.Module):
         output = self.linear1(state)
         return output
 
-
-class environment:
-    def __init__(self, basal, carb, basal_inc, carb_inc):
-        self.basal = basal
-        self.carb = carb
-        self.basal_inc = basal_inc
-        self.carb_inc = carb_inc
-
-    def get_state(self, action=8):
-        # default action is basal = 0.7, carb = 15
-        if action > self.get_action_size() or action < 0:
-            raise Exception(f"Action must be between: [0, {self.get_action_size()}): {action}")
-
-        basal, carb, deltas = self.update_insulin(action)
-        self.basal, self.carb = basal, carb  # update globals
-
-        # basal = basal_arr[action % len(basal_arr)]
-        # carb = carb_arr[action // len(basal_arr)]
-
-        times = [102, 144, 216, 240]
-        carbs = [27, 17, 28, 12]
-
-        m_times = matlab.double(times)
-        m_carbs = matlab.double(carbs)
-
-        bg, insulin = eng.run_sim(m_times, m_carbs, float(carb), float(basal), nargout=2)
-        bg, insulin = bg[0], insulin[0]
-        reward = compute_reward.reward(bg)
-
-        bg = np.array(bg)
-
-        norm_bg = bg / 150
-        norm_carb = carb / 15
-
-        critic_state = np.array([deltas[0], deltas[1]])  # delta basal, delta carb
-        critic_state = np.append(critic_state, norm_bg)
-
-        actor_state = np.array([basal, norm_carb])
-        actor_state = np.append(actor_state, norm_bg)
-
-        print(f"Current State: {basal}, {carb} --> {reward}")
-        return np.array(actor_state), np.array(critic_state), reward
-
-    def update_insulin(self, action):
-        carb, basal = self.carb, self.basal
-        inc_carb, inc_basal = self.carb_inc, self.basal_inc
-
-        f_basal = action % 3
-        f_carb = action // 3
-
-        db = 0
-        dc = 0
-
-        if f_basal == 0:
-            basal -= inc_basal
-            db = -inc_basal
-        elif f_basal == 2:
-            basal += inc_basal
-            db = inc_basal
-
-        if f_carb == 0:
-            carb -= inc_carb
-            dc = -inc_carb
-        elif f_carb == 2:
-            carb += inc_carb
-            dc = inc_carb
-
-        # bounds checking
-        if carb <= 0:
-            carb = inc_carb
-        if basal <= 0:
-            basal = inc_basal
-
-        return basal, carb, (db, dc)
-
-    @staticmethod
-    def get_state_size():
-        return 291
-
-    @staticmethod
-    def get_action_size():
-        return 9
-
-
 def compute_returns(next_value, rewards, gamma=0.99):
     R = next_value
     returns = []
@@ -154,7 +67,7 @@ def compute_returns(next_value, rewards, gamma=0.99):
 def trainIters(actor, critic, n_iters):
     optimizerA = optim.Adam(actor.parameters())
     optimizerC = optim.Adam(critic.parameters())
-    env = environment(0.7, 20, 0.3, 5)
+    env = Environment(0.7, 20, 0.3, 5)
     actor_state, critic_state, _ = env.get_state()
 
     learn_len = 7
@@ -228,17 +141,17 @@ def trainIters(actor, critic, n_iters):
 
 def show_distrib(distrib, iter):
     print('showing distrib', end=', ')
-    x = [i for i in range(environment.get_action_size())]
+    x = [i for i in range(Environment.get_action_size())]
     n = 10000
     samp = [distrib.sample().item() for _ in range(n)]
     print('finished sampling', end=', ')
     counter = collections.Counter(samp)
     print('made counter', end=', ')
-    y = [counter[i] for i in range(environment.get_action_size())]
+    y = [counter[i] for i in range(Environment.get_action_size())]
     print('displaying')
 
     bin_size = 20
-    bin_x = [i for i in range(0, environment.get_action_size(), bin_size)]
+    bin_x = [i for i in range(0, Environment.get_action_size(), bin_size)]
     bin_y = [sum(y[bin_x[i]:bin_x[i+1]]) for i in range(len(bin_x) - 1)]
 
     plt.plot(x, y)
@@ -249,6 +162,6 @@ def show_distrib(distrib, iter):
 if __name__ == '__main__':
     print(device)
 
-    actor = Actor(environment.get_state_size(), environment.get_action_size()).to(device)
-    critic = Critic(environment.get_state_size(), environment.get_action_size()).to(device)
+    actor = Actor(Environment.get_state_size(), Environment.get_action_size()).to(device)
+    critic = Critic(Environment.get_state_size(), Environment.get_action_size()).to(device)
     trainIters(actor, critic, n_iters=100)
