@@ -119,7 +119,7 @@ def optimize_model():
 def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
     policy_net, target_net = models
     # Initialize the environment and state
-    state, _, _ = env.get_state()
+    state, _, prev_reward = env.get_state()
     state = torch.tensor(state).to(device)
 
     f = open('log.txt', 'a')
@@ -141,8 +141,13 @@ def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
         # Store the transition in memory
         memory.push(state, action, next_state, reward)
 
+        # store backwards transition in memory (do the opposite action of what we just did)
+        if action != 4:  # don't double up on the do nothing action
+            memory.push(next_state, (8-action), state, prev_reward)
+
         # Move to the next state
         state = next_state
+        prev_reward = reward
 
         # Perform one step of the optimization (on the policy network)
         optimize_model()
