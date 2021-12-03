@@ -232,6 +232,11 @@ if __name__ == "__main__":
     opt = optim.RMSprop(policy_net.parameters())
 
     env = Environment(0.7, 20, 0.3, 5)
+
+    print('*' * 100)
+    print('Base CNN Experiments')
+    print('*' * 100)
+
     train_iters(env, 150, (policy_net, target_net), opt, fpath='results/base_cnn.txt')
 
     torch.save(policy_net, 'model/base_cnn.pkl')
@@ -244,6 +249,11 @@ if __name__ == "__main__":
     opt = optim.RMSprop(policy_net.parameters())
 
     env = Environment(0.7, 20, 0.3, 5)
+
+    print('*' * 100)
+    print('Base NNN Experiments')
+    print('*' * 100)
+
     train_iters(env, 150, (policy_net, target_net), opt, fpath='results/base_nnn.txt')
 
     torch.save(policy_net, 'model/base_nnn.pkl')
@@ -258,6 +268,11 @@ if __name__ == "__main__":
     opt = optim.RMSprop(policy_net.parameters())
 
     env = Environment(0.7, 20, 0.3, 5)
+
+    print('*' * 100)
+    print('500 CNN Experiments')
+    print('*' * 100)
+
     train_iters(env, 500, (policy_net, target_net), opt, fpath='results/500_cnn.txt')
 
     torch.save(policy_net, 'model/500_cnn.pkl')
@@ -270,6 +285,11 @@ if __name__ == "__main__":
     opt = optim.RMSprop(policy_net.parameters())
 
     env = Environment(0.7, 20, 0.3, 5)
+
+    print('*' * 100)
+    print('500 NNN Experiments')
+    print('*' * 100)
+
     train_iters(env, 500, (policy_net, target_net), opt, fpath='results/500_nnn.txt')
 
     torch.save(policy_net, 'model/500_nnn.pkl')
@@ -284,6 +304,10 @@ if __name__ == "__main__":
 
     opt = optim.RMSprop(policy_net.parameters())
 
+    print('*' * 100)
+    print('150 Random CNN Experiments')
+    print('*' * 100)
+
     train_iters(envs, 150, (policy_net, target_net), opt, fpath='results/random_150_cnn.txt')
 
     torch.save(policy_net, 'model/random_150_cnn.pkl')
@@ -296,6 +320,11 @@ if __name__ == "__main__":
     opt = optim.RMSprop(policy_net.parameters())
 
     env = Environment(0.7, 20, 0.3, 5)
+
+    print('*' * 100)
+    print('150 Random NNN Experiments')
+    print('*' * 100)
+
     train_iters(envs, 150, (policy_net, target_net), opt, fpath='results/random_150_nnn.txt')
 
     torch.save(policy_net, 'model/random_150_nnn.pkl')
@@ -306,6 +335,10 @@ if __name__ == "__main__":
     target_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
 
     opt = optim.RMSprop(policy_net.parameters())
+
+    print('*' * 100)
+    print('1000 Random CNN Experiments')
+    print('*' * 100)
 
     train_iters(envs, 1000, (policy_net, target_net), opt, fpath='results/random_1000_cnn.txt')
 
@@ -319,6 +352,11 @@ if __name__ == "__main__":
     opt = optim.RMSprop(policy_net.parameters())
 
     env = Environment(0.7, 20, 0.3, 5)
+
+    print('*' * 100)
+    print('1000 Random NNN Experiments')
+    print('*' * 100)
+
     train_iters(envs, 1000, (policy_net, target_net), opt, fpath='results/random_1000_nnn.txt')
 
     torch.save(policy_net, 'model/random_1000_nnn.pkl')
