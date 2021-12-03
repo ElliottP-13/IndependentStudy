@@ -1,3 +1,5 @@
+import random
+
 import matlab.engine
 import numpy as np
 import compute_reward
@@ -7,11 +9,13 @@ eng.cd(r'T1D_VPP/', nargout=0)
 
 
 class Environment:
-    def __init__(self, basal, carb, basal_inc, carb_inc):
+    def __init__(self, basal, carb, basal_inc, carb_inc, patient=1, variable_intake=False):
         self.basal = basal
         self.carb = carb
         self.basal_inc = basal_inc
         self.carb_inc = carb_inc
+        self.nn = patient
+        self.variable_intake = variable_intake
 
     def get_state(self, action=8):
         # default action is basal = 0.7, carb = 15
@@ -27,10 +31,14 @@ class Environment:
         times = [102, 144, 216, 240]
         carbs = [27, 17, 28, 12]
 
+        if self.variable_intake:  # randomize carb intake a little bit
+            times = [x + random.randrange(-30, 30, 1) for x in times]
+            carbs = [x + random.randrange(-10, 20, 1) for x in carbs]
+
         m_times = matlab.double(times)
         m_carbs = matlab.double(carbs)
 
-        bg, insulin = eng.run_sim(m_times, m_carbs, float(carb), float(basal), nargout=2)
+        bg, insulin = eng.run_sim(m_times, m_carbs, float(carb), float(basal), self.nn, nargout=2)
         bg, insulin = bg[0], insulin[0]
         reward = compute_reward.reward(bg)
 

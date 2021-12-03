@@ -23,5 +23,5 @@ if __name__ == "__main__":
     df['time'] = df['time'].map(lambda x: x // 60 // timestep)  # convert to time (mins / sampling interval)
     df['meal_type'] = df['meal_type'].map(lambda x: meals[x])
 
-
+    print('done')
 

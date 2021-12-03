@@ -1,4 +1,4 @@
-function [outputArg1,outputArg2] = run_simulation(times, carbs, ICR, basal)
+function [outputArg1,outputArg2] = run_simulation(times, carbs, ICR, basal, nn)
 %run_simulation
 %Copied from Single Hormone Population/Test Population/Test_Population.m
 %% loading the VPP
@@ -13,7 +13,6 @@ function [outputArg1,outputArg2] = run_simulation(times, carbs, ICR, basal)
     Ts = 5;                          % Ts: sampling interval every 5 minutes (min);
     Days_Sim = 1;                    % Number of simulation Days
     Sim_time = Days_Sim*1440/Ts;     % simulation time (sample)
-    nn = 1;                          % ID of the virtual subject
 
     %% loading the model parameters of the selected virtual patient
 
