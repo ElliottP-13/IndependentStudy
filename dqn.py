@@ -81,18 +81,26 @@ class CNN_DQN(Learner):
         self.action_size = action_size
         self.other_size = other_size
 
-        hidden_size = 512
         self.conv1 = nn.Conv1d(1, 16, kernel_size=5)
         self.bn1 = nn.BatchNorm1d(16)
         self.conv2 = nn.Conv1d(16, 32, kernel_size=5)
         self.bn2 = nn.BatchNorm1d(32)
 
+        # conv_out_size = ((state_size - other_size) - 3) // 2 + 1  # not working right, manually set 8994
+        self.linear1 = nn.Linear(8994, 128)
+        self.linear2 = nn.Linear(128, action_size)
 
 
     def forward(self, state):
-        output = F.relu(self.linear1(state))
-        output = F.relu(self.linear2(output))
-        output = self.linear3(output)
+        insulin, bg = torch.hsplit(state, [self.other_size])
+
+        cv = F.relu(self.bn1(self.conv1(bg.unsqueeze(1))))
+        cv = F.relu(self.bn2(self.conv2(cv)))
+
+        cv = cv.view(cv.size(0), -1)  # flatten back out
+        o = torch.cat([insulin, cv], dim=1)
+        o = F.relu(self.linear1(o))
+        output = F.relu(self.linear2(o))
 
         return output
 
@@ -110,9 +118,14 @@ def optimize_model():
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                           batch.next_state)), device=device, dtype=torch.bool)
-    non_final_next_states = torch.vstack([s for s in batch.state if s is not None])  # BATCH_SIZE x STATE
-    state_batch = torch.vstack(batch.state)  # BATCH_SIZE x STATE
-    action_batch = torch.unsqueeze(torch.cat(batch.action), 0)  # BATCH_SIZE x 1
+    # non_final_next_states = torch.vstack([s for s in batch.state if s is not None])  # BATCH_SIZE x STATE
+    # state_batch = torch.vstack(batch.state)  # BATCH_SIZE x STATE
+
+    non_final_next_states = torch.cat([s for s in batch.next_state
+                                       if s is not None])
+    state_batch = torch.cat(batch.state)
+
+    action_batch = torch.unsqueeze(torch.cat(batch.action), 1)  # BATCH_SIZE x 1
     reward_batch = torch.cat(batch.reward)  # BATCH_SIZE,
 
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
@@ -147,7 +160,7 @@ def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
     # Initialize the environment and state
     state, _, prev_reward = env.get_state()
     prev_reward = torch.tensor([prev_reward], device=device)
-    state = torch.tensor(state).to(device)
+    state = torch.tensor(state).unsqueeze(0).to(device)  # to tensor, add batch dimension
 
     f = open('log.txt', 'a')
     f.write(f'New Experiment - Num episodes: {num_episodes}\n')
@@ -158,7 +171,7 @@ def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
         action = policy_net.select_action(state, i)
         next_state, _, reward = env.get_state(action)
 
-        next_state = torch.tensor(next_state).to(device)
+        next_state = torch.tensor(next_state).unsqueeze(0).to(device)
 
         print(f"{i} action: {action}")
         print(f"Current State: {env.basal} {env.carb} --> {reward}")
@@ -195,8 +208,8 @@ GAMMA = 0.999
 memory = ReplayMemory(10000)
 
 if __name__ == "__main__":
-    policy_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
+    policy_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
+    target_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
 
     optimizer = optim.RMSprop(policy_net.parameters())
 
