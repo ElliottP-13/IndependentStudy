@@ -31,21 +31,9 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-class DQN(nn.Module):
-    def __init__(self, state_size, action_size):
-        super(DQN, self).__init__()
-        self.state_size = state_size
-        self.action_size = action_size
-        self.linear1 = nn.Linear(self.state_size, 500)
-        self.linear2 = nn.Linear(500, 500)
-        self.linear3 = nn.Linear(500, self.action_size)
-
-    def forward(self, state):
-        output = F.relu(self.linear1(state))
-        output = F.relu(self.linear2(output))
-        output = self.linear3(output)
-
-        return output
+class Learner(nn.Module):
+    def __int__(self):
+        super(Learner, self).__int__()
 
     def select_action(self, state, steps_done):
         # parameters for selecting best action vs random action
@@ -69,6 +57,45 @@ class DQN(nn.Module):
         else:
             return random.randrange(self.action_size)
 
+class DQN(Learner):
+    def __init__(self, state_size, action_size):
+        super(DQN, self).__init__()
+        self.state_size = state_size
+        self.action_size = action_size
+        self.linear1 = nn.Linear(self.state_size, 500)
+        self.linear2 = nn.Linear(500, 500)
+        self.linear3 = nn.Linear(500, self.action_size)
+
+    def forward(self, state):
+        output = F.relu(self.linear1(state))
+        output = F.relu(self.linear2(output))
+        output = self.linear3(output)
+
+        return output
+
+
+class CNN_DQN(Learner):
+    def __init__(self, state_size, action_size, other_size=2):
+        super().__init__()
+        self.state_size = state_size
+        self.action_size = action_size
+        self.other_size = other_size
+
+        hidden_size = 512
+        self.conv1 = nn.Conv1d(1, 16, kernel_size=5)
+        self.bn1 = nn.BatchNorm1d(16)
+        self.conv2 = nn.Conv1d(16, 32, kernel_size=5)
+        self.bn2 = nn.BatchNorm1d(32)
+
+
+
+    def forward(self, state):
+        output = F.relu(self.linear1(state))
+        output = F.relu(self.linear2(output))
+        output = self.linear3(output)
+
+        return output
+
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:
@@ -83,11 +110,10 @@ def optimize_model():
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                           batch.next_state)), device=device, dtype=torch.bool)
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
-    state_batch = torch.cat(batch.state)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
+    non_final_next_states = torch.vstack([s for s in batch.state if s is not None])  # BATCH_SIZE x STATE
+    state_batch = torch.vstack(batch.state)  # BATCH_SIZE x STATE
+    action_batch = torch.unsqueeze(torch.cat(batch.action), 0)  # BATCH_SIZE x 1
+    reward_batch = torch.cat(batch.reward)  # BATCH_SIZE,
 
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
@@ -120,6 +146,7 @@ def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
     policy_net, target_net = models
     # Initialize the environment and state
     state, _, prev_reward = env.get_state()
+    prev_reward = torch.tensor([prev_reward], device=device)
     state = torch.tensor(state).to(device)
 
     f = open('log.txt', 'a')
@@ -139,11 +166,11 @@ def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
         reward = torch.tensor([reward], device=device)
 
         # Store the transition in memory
-        memory.push(state, action, next_state, reward)
+        memory.push(state, torch.tensor([action], device=device), next_state, reward)
 
         # store backwards transition in memory (do the opposite action of what we just did)
         if action != 4:  # don't double up on the do nothing action
-            memory.push(next_state, (8-action), state, prev_reward)
+            memory.push(next_state, torch.tensor([8-action], device=device), state, prev_reward)
 
         # Move to the next state
         state = next_state
@@ -155,14 +182,15 @@ def train_iters(env, num_episodes, models, TARGET_UPDATE=5):
         # Update the target network, copying all weights and biases in DQN
         if i % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
+            f.flush()  # write to file
 
-        f.write(f'{i}, {action}, {env.basal}, {env.carb}, {reward}\n')
+        f.write(f'{i}, {action}, {env.basal}, {env.carb}, {reward.cpu().item()}\n')
 
     print('Complete')
     f.close()
 
 # global parameters
-BATCH_SIZE = 128
+BATCH_SIZE = 16
 GAMMA = 0.999
 memory = ReplayMemory(10000)
 
