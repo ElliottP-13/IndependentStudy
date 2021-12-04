@@ -192,12 +192,15 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
 
         reward = torch.tensor([reward], device=device)
 
+        env.store_state(next_state.clone(), reward)
+
         # Store the transition in memory
         memory.push(state, torch.tensor([action], device=device), next_state, reward)
 
-        # store backwards transition in memory (do the opposite action of what we just did)
-        if action != 4:  # don't double up on the do nothing action
-            memory.push(next_state, torch.tensor([8-action], device=device), state, prev_reward)
+        # infer other actions and expected rewards
+        for item in env.get_adjacent():
+            a, (st, rew) = item
+            memory.push(next_state, torch.tensor([a], device=device), st, rew)
 
         # Move to the next state
         state = next_state
@@ -220,7 +223,7 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
 
 # global parameters
 BATCH_SIZE = 16
-GAMMA = 0.999
+GAMMA = 0.5
 memory = ReplayMemory(10000)
 
 if __name__ == "__main__":
@@ -257,42 +260,6 @@ if __name__ == "__main__":
     train_iters(env, 150, (policy_net, target_net), opt, fpath='results/base_nnn.txt')
 
     torch.save(policy_net, 'model/base_nnn.pkl')
-
-    # 500 iteration
-
-    memory = ReplayMemory(10000)  # wipe memory
-
-    policy_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-
-    opt = optim.RMSprop(policy_net.parameters())
-
-    env = Environment(0.7, 20, 0.3, 5)
-
-    print('*' * 100)
-    print('500 CNN Experiments')
-    print('*' * 100)
-
-    train_iters(env, 500, (policy_net, target_net), opt, fpath='results/500_cnn.txt')
-
-    torch.save(policy_net, 'model/500_cnn.pkl')
-
-    memory = ReplayMemory(10000)  # wipe memory
-
-    policy_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-
-    opt = optim.RMSprop(policy_net.parameters())
-
-    env = Environment(0.7, 20, 0.3, 5)
-
-    print('*' * 100)
-    print('500 NNN Experiments')
-    print('*' * 100)
-
-    train_iters(env, 500, (policy_net, target_net), opt, fpath='results/500_nnn.txt')
-
-    torch.save(policy_net, 'model/500_nnn.pkl')
 
     # Random experiments
     envs = [Environment(random.uniform(0.1, 1.5), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=(i + 1)) for i in range(50)]

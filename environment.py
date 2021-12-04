@@ -17,6 +17,21 @@ class Environment:
         self.nn = patient
         self.variable_intake = variable_intake
 
+        self.state_dict = {}
+
+    def store_state(self, state, reward):
+        self.state_dict[(self.basal, self.carb)] = (state, reward)
+
+    def get_adjacent(self):
+        out = []
+        for a in range(self.get_action_size()):
+            if a == 4:
+                continue
+            basal, carb, _ = self.update_insulin(a)
+            if (basal, carb) in self.state_dict:
+                out.append((a, self.state_dict[(basal,carb)]))
+        return out
+
     def get_state(self, action=8):
         # default action is basal = 0.7, carb = 15
         if action > self.get_action_size() or action < 0:
