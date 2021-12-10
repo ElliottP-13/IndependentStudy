@@ -1,3 +1,7 @@
+import datetime
+import glob
+import time
+from sarsa import *
 import torch
 from environment import Environment
 from dqn import *
@@ -46,17 +50,41 @@ def test(models, env, iterations, fpath='log.txt'):
             states[idx] = next_st
             f.write(s)
         f.write('\n')
+        f.flush()
 
 
 if __name__ == '__main__':
-    m1 = torch.load('./model/random_1000_cnn.pkl')
-    m2 = torch.load('./model/random_1000_nnn.pkl')
-    om1 = torch.load('./model/original_runs/random_1000_cnn.pkl')
-    om2 = torch.load('./model/original_runs/random_1000_nnn.pkl')
+
+    # files = glob.glob('.\\model\\*\\*.pkl') + glob.glob('.\\model\\*.pkl')
+    # files = glob.glob('.\\model\\*.pkl')
+    files = glob.glob('.\\model\\*\\*.pkl')
+    models = []
+    for fname in files:
+        if 'policy' in fname:
+            continue
+        if 'nnn' not in fname:
+            continue
+        m = torch.load(fname)
+        n = fname.split('.')[1]
+        print(n)
+        models.append((n, m))
+
+    print(f"Running tests on {len(models)} models")
+
+    # 1 = old, nnn
+    # 2 = old, cnn
+    # 3 - new, nnn
+    # 4 = new, nnn
+    # 5 = new, sarsa
 
     environment = Environment(random.uniform(0.1, 1.5), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=95)
+    test(models, environment, 100, fpath='results/test_95_1_1.csv')
 
-    test([('CNN1', m1), ('NNN1', m2), ('CNN2', om1), ('NNN2', om2)], environment, 100, fpath='results/test95.csv')
+    environment = Environment(random.uniform(0.1, 1.5), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=95)
+    test(models, environment, 100, fpath='results/test_95_2_1.csv')
+
+    environment = Environment(random.uniform(0.1, 1.5), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=95)
+    test(models, environment, 100, fpath='results/test_95_3_1.csv')
 
 
     pass

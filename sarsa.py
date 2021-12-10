@@ -101,64 +101,14 @@ class CNN_SARSA(Learner):
         return output
 
 
-def optimize_model(optimizer):
-    transitions = memory.sample(BATCH_SIZE)
-    # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
-    # detailed explanation). This converts batch-array of Transitions
-    # to Transition of batch-arrays.
-    batch = Transition(*zip(*transitions))
-
-    # Compute a mask of non-final states and concatenate the batch elements
-    # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
-    # non_final_next_states = torch.vstack([s for s in batch.state if s is not None])  # BATCH_SIZE x STATE
-    # state_batch = torch.vstack(batch.state)  # BATCH_SIZE x STATE
-
-    non_final_next_states = torch.cat([s for s in batch.next_state
-                                       if s is not None])
-    state_batch = torch.cat(batch.state)
-
-    action_batch = torch.unsqueeze(torch.cat(batch.action), 1)  # BATCH_SIZE x 1
-    reward_batch = torch.cat(batch.reward)  # BATCH_SIZE,
-
-    # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-    # columns of actions taken. These are the actions which would've been taken
-    # for each batch state according to policy_net
-    state_action_values = policy_net(state_batch).gather(1, action_batch)
-
-    # Compute V(s_{t+1}) for all next states.
-    # Expected values of actions for non_final_next_states are computed based
-    # on the "older" target_net; selecting their best reward with max(1)[0].
-    # This is merged based on the mask, such that we'll have either the expected
-    # state value or 0 in case the state was final.
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
-    # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
-
-    # Compute Huber loss
-    criterion = nn.SmoothL1Loss()
-    loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
-    # Optimize the model
-    optimizer.zero_grad()
-    loss.backward()
-    for param in policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)
-    optimizer.step()
-
-
-def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='log.txt'):
+def train_iters(envs, num_episodes, policy_net, optimizer, TARGET_UPDATE=5, fpath='log.txt'):
     if not isinstance(envs, list):
         env = envs
     else:
         env = random.choice(envs)  # get random patient
 
-    policy_net, target_net = models
     # Initialize the environment and state
     state, _, prev_reward = env.get_state()
-    prev_reward = torch.tensor([prev_reward], device=device)
     state = torch.tensor(state).unsqueeze(0).to(device)  # to tensor, add batch dimension
 
     f = open(fpath, 'a')
@@ -174,7 +124,6 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
 
             # compute all the initial stuff we need
             state, _, prev_reward = env.get_state()
-            prev_reward = torch.tensor([prev_reward], device=device)
             state = torch.tensor(state).unsqueeze(0).to(device)  # to tensor, add batch dimension
 
         # Select and perform an action
@@ -195,13 +144,15 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
         state_action_value = None
         expected_values = None
 
+        remove_keys = []
+
         for key, value in policy_net.traces.items():
             if value < 0.01:  # get rid of small traces
-                policy_net.traces.pop(key)
+                remove_keys.append(key)
                 continue
             s, a = key
 
-            sav = policy_net(s).gather(1, torch.tensor([a]).unsqueeze(0))
+            sav = policy_net(s).gather(1, torch.tensor([a], device=device).unsqueeze(0))
             state_action_value = torch.vstack((state_action_value, sav)) \
                 if state_action_value is not None else sav
             expected_value = LEARNING_RATE * delta * value
@@ -209,6 +160,9 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
                 if expected_values is not None else expected_value
 
             policy_net.traces[key] = LAMBDA * value
+
+        for k in remove_keys:
+            policy_net.traces.pop(k)
 
         criterion = nn.SmoothL1Loss()
         loss = criterion(state_action_value, expected_values)
@@ -238,7 +192,6 @@ if __name__ == "__main__":
     # Base experiments
 
     policy_net = SARSA(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = SARSA(Environment.get_state_size(), Environment.get_action_size()).to(device)
 
     opt = optim.RMSprop(policy_net.parameters())
 
@@ -248,6 +201,35 @@ if __name__ == "__main__":
     print('Base NNN Experiments')
     print('*' * 100)
 
-    train_iters(env, 150, (policy_net, target_net), opt, fpath='results/base_nnn.txt')
+    train_iters(env, 150, policy_net, opt, fpath='results/base_sarsa.txt')
+    torch.save(policy_net, 'model/base_sarsa.pkl')
+
+    # Random experiments
+    envs = [Environment(random.uniform(0.1, 1.5), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=(i + 1))
+            for i in range(50)]
+
+    policy_net = SARSA(Environment.get_state_size(), Environment.get_action_size()).to(device)
+
+    opt = optim.RMSprop(policy_net.parameters())
+
+    print('*' * 100)
+    print('150 Random CNN Experiments')
+    print('*' * 100)
+
+    train_iters(envs, 150, policy_net, opt, fpath='results/random_150_sarsa.txt')
+
+    torch.save(policy_net, 'model/random_150_sarsa.pkl')
+
+    policy_net = SARSA(Environment.get_state_size(), Environment.get_action_size()).to(device)
+
+    opt = optim.RMSprop(policy_net.parameters())
+
+    print('*' * 100)
+    print('150 Random CNN Experiments')
+    print('*' * 100)
+
+    train_iters(envs, 1000, policy_net, opt, fpath='results/random_1000_sarsa.txt')
+
+    torch.save(policy_net, 'model/random_1000_sarsa.pkl')
 
     pass
