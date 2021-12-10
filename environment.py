@@ -115,3 +115,6 @@ class Environment:
     @staticmethod
     def get_action_size():
         return 9
+
+    def __copy__(self):
+        return Environment(self.basal, self.carb, self.basal_inc, self.carb_inc, self.nn, self.variable_intake)
