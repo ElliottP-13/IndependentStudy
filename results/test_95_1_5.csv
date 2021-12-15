@@ -12,7 +12,7 @@ iteration, _action, _basal, _carb, _reward, _action, _basal, _carb, _reward, _ac
 9, 2, 3.95810227140804, 5, -441.0, 0, 0.3, 5, -39.70000076293945, 3, 0.3, 32, -368.79998779296875, 
 10, 2, 4.25810227140804, 5, -444.0, 0, 0.3, 5, -140.39999389648438, 3, 0.3, 32, -338.20001220703125, 
 11, 2, 4.55810227140804, 5, -443.5, 0, 0.3, 5, -107.5999984741211, New Test 
-iteration, \model\base_sarsa_action, \model\base_sarsa_basal, \model\base_sarsa_carb, \model\base_sarsa_reward, \model\random_1000_sarsa_action, \model\random_1000_sarsa_basal, \model\random_1000_sarsa_carb, \model\random_1000_sarsa_reward, \model\random_150_sarsa_action, \model\random_150_sarsa_basal, \model\random_150_sarsa_carb, \model\random_150_sarsa_reward
+iteration, base_sarsa_action, base_sarsa_basal, base_sarsa_carb, base_sarsa_reward, random_1000_sarsa_action, random_1000_sarsa_basal, random_1000_sarsa_carb, random_1000_sarsa_reward, random_150_sarsa_action, random_150_sarsa_basal, random_150_sarsa_carb, random_150_sarsa_reward
 0, 2, 2.0965139944535105, 29, -8.399999618530273, 0, 1.4965139944535104, 29, 8.5, 3, 1.4965139944535104, 34, -35.79999923706055, 
 1, 2, 2.3965139944535103, 24, -67.5, 0, 1.1965139944535104, 24, -14.100000381469727, 3, 1.1965139944535104, 34, -24.5, 
 2, 2, 2.69651399445351, 19, -235.5, 0, 0.8965139944535103, 19, -115.5, 3, 0.8965139944535103, 34, -91.0, 

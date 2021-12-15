@@ -3,7 +3,7 @@ import glob
 import time
 from sarsa import *
 import torch
-from environment import Environment
+# from environment import Environment
 from dqn import *
 
 
@@ -70,6 +70,8 @@ if __name__ == '__main__':
         models.append((n, m))
 
     print(f"Running tests on {len(models)} models")
+    print([m[0] for m in models])
+    exit(1)
 
     # 1 = old, nnn
     # 2 = old, cnn

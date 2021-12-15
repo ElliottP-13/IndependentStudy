@@ -112,7 +112,7 @@ iteration, _action, _basal, _carb, _reward, _action, _basal, _carb, _reward, _ac
 7, 8, 1.394631155809693, 39, -19.399999618530273, 6, 0.3, 50, -321.3999938964844, 4, 1.394631155809693, 19, 88.5, 
 8, 3, 1.094631155809693, 39, -92.0999984741211, 6, 0.3, 50, -277.79998779296875, 4, 1.394631155809693, 19, 140.5, 
 9, 3, 0.794631155809693, 39, -124.4000015258789, 6, 0.3, 50, -304.6000061035156, New Test 
-iteration, \model\original_runs\base_nnn_action, \model\original_runs\base_nnn_basal, \model\original_runs\base_nnn_carb, \model\original_runs\base_nnn_reward, \model\original_runs\random_1000_nnn_action, \model\original_runs\random_1000_nnn_basal, \model\original_runs\random_1000_nnn_carb, \model\original_runs\random_1000_nnn_reward, \model\original_runs\random_150_nnn_action, \model\original_runs\random_150_nnn_basal, \model\original_runs\random_150_nnn_carb, \model\original_runs\random_150_nnn_reward
+iteration, base_nnn_action, base_nnn_basal, base_nnn_carb, base_nnn_reward, random_1000_nnn_action, random_1000_nnn_basal, random_1000_nnn_carb, random_1000_nnn_reward, random_150_nnn_action, random_150_nnn_basal, random_150_nnn_carb, random_150_nnn_reward
 0, 8, 0.7749166120326054, 20, -131.10000610351562, 6, 0.1749166120326054, 20, -333.20001220703125, 4, 0.4749166120326054, 15, -190.0, 
 1, 8, 1.0749166120326055, 25, -77.80000305175781, 6, 0.3, 25, -264.3999938964844, 4, 0.4749166120326054, 15, -190.1999969482422, 
 2, 3, 0.7749166120326054, 25, -133.8000030517578, 6, 0.3, 30, -318.79998779296875, 4, 0.4749166120326054, 15, -184.8000030517578, 

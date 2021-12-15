@@ -113,7 +113,7 @@ iteration, _action, _basal, _carb, _reward, _action, _basal, _carb, _reward, _ac
 8, 3, 0.3, 22, -243.1999969482422, 0, 0.3, 5, -94.4000015258789, 0, 0.3, 5, -142.6999969482422, 
 9, 3, 0.3, 22, -302.0, 0, 0.3, 5, -68.69999694824219, 0, 0.3, 5, -99.80000305175781, 
 10, New Test 
-iteration, \model\original_runs\base_cnn_action, \model\original_runs\base_cnn_basal, \model\original_runs\base_cnn_carb, \model\original_runs\base_cnn_reward, \model\original_runs\random_1000_cnn_action, \model\original_runs\random_1000_cnn_basal, \model\original_runs\random_1000_cnn_carb, \model\original_runs\random_1000_cnn_reward, \model\original_runs\random_150_cnn_action, \model\original_runs\random_150_cnn_basal, \model\original_runs\random_150_cnn_carb, \model\original_runs\random_150_cnn_reward
+iteration, base_cnn_action, base_cnn_basal, base_cnn_carb, base_cnn_reward, random_1000_cnn_action, random_1000_cnn_basal, random_1000_cnn_carb, random_1000_cnn_reward, random_150_cnn_action, random_150_cnn_basal, random_150_cnn_carb, random_150_cnn_reward
 0, 3, 0.22830097734015548, 29, -366.29998779296875, 0, 0.22830097734015548, 24, -358.1000061035156, 0, 0.22830097734015548, 24, -362.29998779296875, 
 1, 3, 0.3, 29, -342.0, 0, 0.3, 19, -269.79998779296875, 0, 0.3, 19, -257.6000061035156, 
 2, 3, 0.3, 29, -319.79998779296875, 0, 0.3, 14, -224.0, 0, 0.3, 14, -225.39999389648438, 

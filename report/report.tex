@@ -184,8 +184,8 @@ The eligibility traces algorithm is implemented as in my notes from CSCI446 Spri
 \begin{figure}[h] 
     \centering
     \includegraphics[width=0.55 \linewidth]{SARSA.png}
-    \label{fig:sarsa}
     \caption{SARSA with eligibility traces from lecture notes}
+    \label{fig:sarsa}
 \end{figure}
 
 I implemented only the first network architecture from in Q-Learning (I did not implement the CNN), and set $\gamma = 0.99$, $\lambda = 0.8$.
@@ -199,6 +199,62 @@ The Q-Learning and SARSA methods performed better.
 For the very basic case, one patient with constant carb intake, the Q-learning methods converged to a decent solution.
 One very strange phenomenon is that it did not converge to the best solution, or even the best seen solution.
 It appears to get stuck in a local optimum and does not further explore the space. 
+
+Models were evaluated using patient number 95 that was not seen during the training. 
+The best action with the highest value was taken from the current state ($a = argmax_{a \in A} Q(a, s)$).
+This was run for a total of 100 iterations to allow the model to converge, and to study how the model improves over time.
+The model did not learn during this period, but was just allowed to increment and decrement the basal and carb ratio until it remained fairly constant.
+Results are shown in Figure \ref{fig:all_results}.
+
+Interestingly the standard neural network performed the best on the base case and the random 1000 trial.
+The base case makes sense given that the state space is constant (one basal, carb pair maps to one blood glucose trend).
+This does not hold in the random experiments as the glucose values depend on the random patient and the random carbohydrate intake.
+So the standard neural network should be able to learn the rewards just by memorizing the states.
+But on the random case, even fairly related states will have different glucose values,
+so the standard neural net should not be able to correlate the states. 
+This is part of what motivated investigating the cnn architecture. 
+The most surprising aspect of this is that the standard neural network performed nearly optimal.
+The maximum score possible is $144.5$. 
+This is the score that is achieved on many different simulated `days'. 
+So not only was the model able to interpret trends in glucose value, but it was able to converge the optimal solution,
+which is something none of the other models ever did.
+
+The universally poor performance on the random 150 training scheme is probably indiciative that there was not enough iterations to successfully train the model.
+All of the models performed quite poorly. 
+It is interesting that in all three schemes many models get stuck in some optimum with reward about -100.
+Via inspection, this appears to have the basal and carbohydrate values at their minimum.
+So the model learned to always reduce both basal and carb. 
+While not ideal, this is preferred over increasing both, as too much insulin causes hypoglycemia which can be fatal,
+while too little insulin has less acute health effects.
+But in general, given that many of the models universally converge to this minimum, 
+it is safe to say that the models are not learning very well.
+
+\begin{figure}
+    \centering
+
+    \begin{subfigure}{0.62 \textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{base.png}
+        \caption{Evaluation of models using base training scheme. One patient, constant carb intake, for 150 iterations}
+        \label{fig:base}
+    \end{subfigure}
+    
+    \begin{subfigure}{0.62 \textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{rand150.png}
+        \caption{Evaluation of models using rand 150 training scheme. 50 patients randomly changed, variable carb intake, for 150 iterations}
+        \label{fig:rand150}
+    \end{subfigure}
+    
+    \begin{subfigure}{0.62 \textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{rand1000.png}
+        \caption{Evaluation of models using rand 1000 training scheme. 50 patients randomly changed, variable carb intake, for 1000 iterations}
+        \label{fig:rand1000}
+    \end{subfigure}
+    \caption{Results testing models trained under different conditions on a patient that was unseen during training}
+    \label{fig:all_results}
+\end{figure}
 
 \section{What I learned?}
 I learned a lot about reinforcement learning in general.
@@ -246,6 +302,19 @@ So training iterations takes a very long time.
 I also learned how to do pytorch. While it isn't strictly educational in the sense of learning new theoretical approaches.
 pytorch is still a very common library for machine learning development and it is good to have exposure to the library moving forward.
 
+What are the next steps in this project? Mainly to get the training working. 
+Which is a very broad and lofty goal.
+One plan is to use the free time over break to allow a computer to train for a long time.
+This allows more iterations and hopefully the model will better learn.
+Along with this, the $\epsilon$ parameter will decay more slowly over time, to encourage more exploration early.
+Another potential method for Q-Learning is to add simulated actions.
+Given the problem nature, if we return to a state with a given basal and carb we can expect the same reward.
+So we can augment the by adding these simulated actions going to states we have already visited.
+For example the opposite action is likely to take us back to the state we were just in.
+So including these in the memory could speed up training as it requires fewer transitions to be made in the simulator
+which is very slow.
+Another parameter to change would be $\gamma$ and the loss function in general.
+We want to focus more on near term rewards, so we can set $\gamma$ to an even smaller value. 
 
 \singlespacing
 \bibliographystyle{plain}
