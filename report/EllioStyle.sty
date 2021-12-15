@@ -1,0 +1,112 @@
+%%
+%% This is style file  is modeled after`6046.sty' found here:
+%% https://github.com/wangjohn/mit-courses/tree/master/6.046/takehome
+%%
+%% It includes math macros used for the CLRS book and 6.046 homework header.
+
+\def\fileversion{1.0}
+\def\filedate{2018/01/11}
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{EllioStyle}
+
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+% ... for formatting algorithms
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Missing ones from Sam
+\usepackage{latexsym}
+
+%From Physics in highschool
+\usepackage{amsmath,amsthm,amsfonts} % packages for math
+\usepackage{graphicx,tikz,pgfplots,setspace} % packages for graphics
+\usepackage[margin=1in]{geometry}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{multirow}
+\usepackage{enumerate}
+%\usepackage{enumitem}
+\usepackage{lipsum}%% a garbage package you don't need except to create examples.
+\usepackage{fancyhdr}
+\usepackage{gensymb}
+\usepackage{array}
+
+
+\pgfplotsset{compat=1.14}
+
+\pagestyle{fancy}
+\rhead{Page \thepage}
+\lhead{\@author}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\usepackage{pgfplotstable}
+\usepackage{placeins}
+
+\newtheorem{theorem}{Theorem}
+
+% ... for page formatting
+\setlength{\oddsidemargin}{0pt}
+\setlength{\evensidemargin}{0pt}
+\setlength{\textwidth}{6.7in}
+\setlength{\topmargin}{0in}
+\setlength{\textheight}{8.5in}
+
+\setlength{\parskip}{1pc}
+\setlength{\parindent}{0pt}
+
+\newcommand{\problem}[1]{
+	\newpage
+	\large{\textbf{Problem #1}}
+}
+
+%% ... References
+
+\renewcommand{\algref}[1]    {Algorithm~\ref{alg:#1}}
+\newcommand{\figref}[1]     {Figure~\ref{fig:#1}}
+\newcommand{\tabref}[1]     {Table~\ref{tab:#1}}
+\newcommand{\stref}[1]      {Step~\ref{st:#1}}
+\newcommand{\strefs}[2]     {Steps~\ref{st:#1}--\ref{st:#2}}
+\newcommand{\thmref}[1]     {Theorem~\ref{thm:#1}}
+\newcommand{\lemref}[1]     {Lemma~\ref{lem:#1}}
+\newcommand{\corref}[1]     {Corollary~\ref{cor:#1}}
+\renewcommand{\eqref}[1]      {Equation~(\ref{eq:#1})}
+\newcommand{\ineqref}[1]    {Inequality~(\ref{ineq:#1})}
+\newcommand{\invref}[1]     {Invariant~\ref{inv:#1}}
+\newcommand{\defref}[1]     {Definition~\ref{def:#1}}
+\newcommand{\propref}[1]    {Property~\ref{prop:#1}}
+\newcommand{\liref}[1]      {line~\ref{li:#1}}
+\newcommand{\lirefs}[2]     {lines \ref{li:#1}--\ref{li:#2}}
+\newcommand{\defn}[1]       {{\textit{\textbf{\boldmath #1}}}}
+
+
+% From Sam %
+
+\newcommand{\reals}         {\mathbb{R}}%\mathbbm{R}}    %% bbm seems to produce type 3 fonts
+\newcommand{\integers}      {\mathbb{Z}}
+\newcommand{\naturals}      {\mathbb{N}}
+\newcommand{\rationals}     {\mathbb{Q}}
+\newcommand{\complex}       {\mathbb{C}}
+
+\renewenvironment{proof}      {\noindent\textsc{Proof.}\hspace{0.5em}}{\qed\par}
+\def\squarebox#1{\hbox to #1{\hfill\vbox to #1{\vfill}}}
+\newcommand{\qedbox}
+{\vbox{\hrule\hbox{\vrule\squarebox{.667em}\vrule}\hrule}}
+\renewcommand{\qed}               {\nopagebreak\mbox{}\hfill\qedbox\smallskip}
+
+\renewcommand{\sp}{\; \;}
+\newcommand*\Eval[3]{\left.#1\right\rvert_{#2}^{#3}}
+
+%From JMLR
+%% Defines the pagestyle for the rest of the pages
+%% Usage: \ShortHeadings{Minimizing Conflicts}{Minton et al}
+%%        \ShortHeadings{short title}{short authors}
+
+\def\ShortHeadings#1#2{\def\ps@jmlrps{\let\@mkboth\@gobbletwo%
+\def\@oddhead{\hfill {\small\sc #1} \hfill}%
+\def\@oddfoot{\hfill \small\rm \thepage \hfill}%
+\def\@evenhead{\hfill {\small\sc #2} \hfill}%
+\def\@evenfoot{\hfill \small\rm \thepage \hfill}}%
+\pagestyle{jmlrps}}
