@@ -20,7 +20,12 @@ class Environment:
         self.state_dict = {}
 
     def store_state(self, state, reward):
-        self.state_dict[(self.basal, self.carb)] = (state, reward)
+        if len(self.state_dict) < 100:
+            self.state_dict[(self.basal, self.carb)] = (state, reward)
+        else:
+            ks = list(self.state_dict.keys())
+            for key in random.sample(ks, 25):  # delete 25 random keys from statedict
+                self.state_dict.pop(key)
 
     def get_adjacent(self):
         out = []

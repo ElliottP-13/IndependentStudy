@@ -117,7 +117,8 @@ def train_iters(envs, num_episodes, policy_net, optimizer, TARGET_UPDATE=5, fpat
 
     action = policy_net.select_action(state, 0)
 
-    for i in range(num_episodes):
+    i = 0
+    while True:
         if isinstance(envs, list) and random.random() < 0.3:  # 30% chance to switch to new patient
             f.write('switching patient\n')
             env = random.choice(envs)
@@ -178,15 +179,14 @@ def train_iters(envs, num_episodes, policy_net, optimizer, TARGET_UPDATE=5, fpat
         state = next_state
         action = next_action
         prev_reward = reward
+        i += 1
 
-    print('Complete')
-    f.close()
 
 # global parameters
-BATCH_SIZE = 16
-GAMMA = 0.999
+BATCH_SIZE = 32
+GAMMA = 0.25
 LAMBDA = 0.8
-LEARNING_RATE = 1
+LEARNING_RATE = 0.1
 
 if __name__ == "__main__":
     # Base experiments

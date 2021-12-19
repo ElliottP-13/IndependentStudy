@@ -155,7 +155,7 @@ def optimize_model(optimizer):
     optimizer.step()
 
 
-def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='log.txt'):
+def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='log.txt', name=''):
     if not isinstance(envs, list):
         env = envs
     else:
@@ -170,10 +170,9 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
     f = open(fpath, 'a')
     f.write(f'New Experiment - Num episodes: {num_episodes}\n')
     f.write('iteration, action, basal, carb, reward\n')
-
-    for i in range(num_episodes):
+    i = 0
+    while True:
         if isinstance(envs, list) and random.random() < 0.3:  # 30% chance to switch to new patient
-            f.write('switching patient\n')
             env = random.choice(envs)
 
             # compute all the initial stuff we need
@@ -213,57 +212,34 @@ def train_iters(envs, num_episodes, models, optimizer, TARGET_UPDATE=5, fpath='l
         if i % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
             f.flush()  # write to file
-            torch.save(policy_net, 'model/curr_policy.pkl')
-            torch.save(target_net, 'model/curr_target.pkl')
+            torch.save(policy_net, f'model/curr_policy_{name}.pkl')
+            torch.save(target_net, f'model/curr_target_{name}.pkl')
+        if i % CHECKPOINT_UPDATE == 0:
+            torch.save(policy_net, f'model/{i}_checkpoint_{name}.pkl')
+
+        if i % RANDOMIZE_UPDATE == 0:
+            if isinstance(envs, list):
+                for e in envs:
+                    e.basal = random.uniform(0.1, 1.5)
+                    e.carb = random.randint(10, 30)
+            else:
+                env.basal = round(random.uniform(0.1, 1.5), 2)
+                env.carb = random.randint(10, 30)
 
         f.write(f'{i}, {action}, {env.basal}, {env.carb}, {reward.cpu().item()}\n')
-
-    print('Complete')
-    f.close()
+        i += 1
 
 # global parameters
-BATCH_SIZE = 16
-GAMMA = 0.5
+BATCH_SIZE = 32
+GAMMA = 0.25
 memory = ReplayMemory(10000)
+CHECKPOINT_UPDATE = 500
+RANDOMIZE_UPDATE = 1500
 
 if __name__ == "__main__":
-    # Base experiments
-
-    policy_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-
-    opt = optim.RMSprop(policy_net.parameters())
-
-    env = Environment(0.7, 20, 0.3, 5)
-
-    print('*' * 100)
-    print('Base CNN Experiments')
-    print('*' * 100)
-
-    train_iters(env, 150, (policy_net, target_net), opt, fpath='results/base_cnn.txt')
-
-    torch.save(policy_net, 'model/base_cnn.pkl')
-
-    memory = ReplayMemory(10000)  # wipe memory
-
-    policy_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-
-    opt = optim.RMSprop(policy_net.parameters())
-
-    env = Environment(0.7, 20, 0.3, 5)
-
-    print('*' * 100)
-    print('Base NNN Experiments')
-    print('*' * 100)
-
-    train_iters(env, 150, (policy_net, target_net), opt, fpath='results/base_nnn.txt')
-
-    torch.save(policy_net, 'model/base_nnn.pkl')
-
     # Random experiments
-    envs = [Environment(random.uniform(0.1, 1.5), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=(i + 1)) for i in range(50)]
-
+    envs = [Environment(round(random.uniform(0.1, 1.5), 2), random.randint(10, 30), 0.3, 5, variable_intake=True, patient=(i + 1)) for i in range(50)]
+    # CNN
     memory = ReplayMemory(10000)  # wipe memory
 
     policy_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
@@ -277,8 +253,9 @@ if __name__ == "__main__":
 
     train_iters(envs, 150, (policy_net, target_net), opt, fpath='results/random_150_cnn.txt')
 
-    torch.save(policy_net, 'model/random_150_cnn.pkl')
+    torch.save(policy_net, 'model/CNN.pkl')
 
+    # NNN
     memory = ReplayMemory(10000)  # wipe memory
 
     policy_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
@@ -294,38 +271,7 @@ if __name__ == "__main__":
 
     train_iters(envs, 150, (policy_net, target_net), opt, fpath='results/random_150_nnn.txt')
 
-    torch.save(policy_net, 'model/random_150_nnn.pkl')
+    torch.save(policy_net, 'model/NNN.pkl')
 
-    memory = ReplayMemory(10000)  # wipe memory
-
-    policy_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = CNN_DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-
-    opt = optim.RMSprop(policy_net.parameters())
-
-    print('*' * 100)
-    print('1000 Random CNN Experiments')
-    print('*' * 100)
-
-    train_iters(envs, 1000, (policy_net, target_net), opt, fpath='results/random_1000_cnn.txt')
-
-    torch.save(policy_net, 'model/random_1000_cnn.pkl')
-
-    memory = ReplayMemory(10000)  # wipe memory
-
-    policy_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-    target_net = DQN(Environment.get_state_size(), Environment.get_action_size()).to(device)
-
-    opt = optim.RMSprop(policy_net.parameters())
-
-    env = Environment(0.7, 20, 0.3, 5)
-
-    print('*' * 100)
-    print('1000 Random NNN Experiments')
-    print('*' * 100)
-
-    train_iters(envs, 1000, (policy_net, target_net), opt, fpath='results/random_1000_nnn.txt')
-
-    torch.save(policy_net, 'model/random_1000_nnn.pkl')
 
     pass
